@@ -1,6 +1,6 @@
 ## <a name="description">Project overview: ChatPDF Api </a>
 
-A Rag RESTful API using Flask,Ollama,Langchain and chromaDB.
+A Rag RESTful API using Flask,Ollama from local,Langchain and chromaDB.
 
 ## <a name="tech-stack"> Tech Stack *  </a>
 - Flask (Backend)
