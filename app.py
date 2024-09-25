@@ -1,0 +1,30 @@
+from flask import Flask,request
+from langchain_community.llms import Ollama
+
+app = Flask(__name__)
+
+cached_llm = Ollama(model="llama3")
+
+
+@app.route("/ai",methods=["POST"])
+def aiPost():
+    print("Post ai called")
+    json_content  = request.json
+    query = json_content.get("query")
+
+    print(f"query : {query}")
+
+    response = cached_llm.invoke("Tell me a funny joke ? ")
+
+    print(response)
+
+    response_answer  =  {"answer": response}
+
+    return response_answer
+
+
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0",port=8200,debug=True)
+    
