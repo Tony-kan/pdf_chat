@@ -22,6 +22,16 @@ def aiPost():
 
     return response_answer
 
+@app.route("/pdf",methods=["POST"])
+def pdfPost():
+    file = request.files("file")
+    file_name = file.filename
+    save_file =  "pdf/" + file_name
+    file.save(save_file)
+    print(f"filename: {file_name}")
+
+    response = {"status": "Successfully uploaded","filename":file_name}
+    return response
 
 
 
