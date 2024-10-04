@@ -2,3 +2,5 @@ langchain
 langchain_community
 flask
 fastembed
+pdfplumber
+chromadb

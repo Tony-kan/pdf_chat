@@ -1,9 +1,13 @@
-from flask import Flask,request
+from flask import Flask, request
 from langchain_community.llms import Ollama
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_community.vectorstores import Chroma
+from langchain.prompts  import PromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+# from app import model
 
 
 app = Flask(__name__)
@@ -12,7 +16,8 @@ folder_path = "db"
 
 cached_llm = Ollama(model="llama3")
 
-embedding = FastEmbedEmbeddings()
+
+embedding = FastEmbedEmbeddings(model="BAAI/bge-small-en-v1.5")
 
 text_splitter = RecursiveCharacterTextSplitter(
    chunk_size=1024,
@@ -21,7 +26,16 @@ text_splitter = RecursiveCharacterTextSplitter(
    is_separator_regex=False 
 )
 
-
+raw_prompt = PromptTemplate.from_template(
+    """"
+    <s>[INST] You are  a  technical assistant  good at searching documents.  If  you  do not  have an answer say  so. [/INST] </s> 
+   [INST] {input}
+          Context:  {context}
+          answer:
+                              [/INST]
+      
+       """
+)
 @app.route("/ai",methods=["POST"])
 def aiPost():
     print("Post ai called")
@@ -38,13 +52,51 @@ def aiPost():
 
     return response_answer
 
+
+@app.route("/ask_pdf",methods=["POST"])
+def askPDFPost():
+    print("Post ask_pdf called")
+    json_content =  request.json
+    query  = json_content.get("query")
+
+    print(f"query : {query}")
+
+    print("Loading vector store")
+    vector_store  = Chroma(persist_directory=folder_path,embedding_function=embedding)
+
+    print("Creating chain")
+    retriever = vector_store.as_retriever(
+         search_type = "similarity_score_threshold",
+         search_kwargs ={
+             "k":20,
+             "score_threshold":0.1
+         }
+    )
+
+    document_chain =  create_stuff_documents_chain(cached_llm,raw_prompt)
+    chain = create_retrieval_chain(retriever,document_chain)
+
+    result =  chain.invoke({"input":query})
+
+    print(result)
+
+    sources = []
+    for doc in result["context"]:
+        sources.append(
+            {"source":doc.metadata["source"],"page_content":doc.page_content}
+        )
+
+    response_answer = {"answer": result["answer"],"sources": sources}
+    return response_answer
+
+
 @app.route("/pdf",methods=["POST"])
 def pdfPost():
-    file = request.files("file")
+    file = request.files["file"]
     file_name = file.filename
     save_file =  "pdf/" + file_name
     file.save(save_file)
-    print(f"filename: {file_name}")
+    print(f"filename: {file_name}") 
 
     loader = PDFPlumberLoader(save_file)
     docs = loader.load_and_split()
